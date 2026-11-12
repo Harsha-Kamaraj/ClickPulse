@@ -9,6 +9,15 @@ require_not_root
 expect_vm 3
 
 banner "Starting Spark standalone on VM3"
+# a master/worker started from another Spark install (e.g. an older lab setup) must not be reused
+for cls in org.apache.spark.deploy.master.Master org.apache.spark.deploy.worker.Worker; do
+  for pid in $(pgrep -f "java.*$cls"); do
+    # the jars a running JVM has open resolve symlinks, so this catches an install reached via a link
+    if ! ls -l "/proc/$pid/fd" 2>/dev/null | grep -q -- "-> $(readlink -f "$SPARK_HOME")/jars/spark-core_"; then
+      die "A Spark ${cls##*.} (pid $pid) from a different Spark install (or another user) is running. Run scripts/vm3/stop_spark.sh first."
+    fi
+  done
+done
 if pgrep -f "org.apache.spark.deploy.master.Master" >/dev/null; then
   info "Spark master already running"
 else

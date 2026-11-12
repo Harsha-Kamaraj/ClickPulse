@@ -172,6 +172,8 @@ From the **Mac** itself, the Mac must also be joined to the ZeroTier network, us
 
 ## Phase 3: rehearse, then do the final run
 
+> **Evaluation format:** arrive with Day 1 and Day 2 already run; during the evaluation show the infrastructure, verify the data and dashboard, and rerun Day 2 live. The step-by-step guide for that is **[DEMO.md](DEMO.md)**. After the final Day 2 run, lock it with `bash scripts/admin/mark_final_run.sh` on VM2.
+
 1. Do a complete practice run with Phase 4 below.
 2. Reset only after a rehearsal: on VM2, run `bash scripts/admin/reset_for_rehearsal.sh` and type `RESET`.
 3. **Final run rule (from the brief).** The final Day 1 run must finish before Day 2. After the final Day 2 run, never reset Kafka, HDFS, the curated table or Druid again. `reset_for_rehearsal.sh` must not be used after that point.

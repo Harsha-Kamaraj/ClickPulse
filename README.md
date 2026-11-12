@@ -3,7 +3,8 @@
 An end-to-end clickstream analytics platform for RetailMart. It ingests raw website events, rejects invalid records, collapses duplicates, upserts corrections and late arrivals into a curated Iceberg table, and serves revenue and purchase analytics from Druid on a dashboard. Airflow orchestrates it, and every step is safe to re-run.
 
 **Team:** Harsha K (VM1) · Anjanaa (VM2) · Gagan R (VM3) · Abhishek (VM4). The VMs are connected over ZeroTier.
-**👉 Who runs what, and the demo script: [EXECUTION_PLAN.md](EXECUTION_PLAN.md)**
+**👉 Who runs what, and the demo script: [EXECUTION_PLAN.md](EXECUTION_PLAN.md)**  
+**👉 Evaluation day (final data pre-loaded, live Day 2 rerun): [DEMO.md](DEMO.md)**
 
 ## Architecture
 

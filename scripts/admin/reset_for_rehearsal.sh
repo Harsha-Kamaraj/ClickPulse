@@ -14,6 +14,11 @@ source "$(dirname "$0")/../lib/common.sh"
 source "$CP_ROOT/scripts/lib/airflow_env.sh"
 expect_vm 2
 
+if hdfs dfs -test -e "$HDFS_ROOT/_control/FINAL_RUN_DONE" 2>/dev/null; then
+  hdfs dfs -cat "$HDFS_ROOT/_control/FINAL_RUN_DONE" 2>/dev/null | sed 's/^/  /'
+  die "The FINAL run is locked (scripts/admin/mark_final_run.sh). Resetting now would break the project rules - refusing."
+fi
+
 banner "!!! This deletes every ClickPulse message, file, table row and Druid segment !!!"
 read -r -p "Type RESET to continue: " ans
 [[ "$ans" == "RESET" ]] || die "aborted"

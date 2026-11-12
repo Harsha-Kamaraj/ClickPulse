@@ -53,7 +53,7 @@ cat > "$KCONF/broker1.properties" <<EOF
 process.roles=broker,controller
 node.id=1
 listeners=PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093
-advertised.listeners=PLAINTEXT://${VM1_HOST}:9092
+advertised.listeners=PLAINTEXT://${VM1_HOST}:9092,CONTROLLER://${VM1_HOST}:9093
 log.dirs=${CP_DATA}/kafka/broker1
 $(common_props)
 EOF

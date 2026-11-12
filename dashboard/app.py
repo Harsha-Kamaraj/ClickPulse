@@ -29,6 +29,8 @@ st.markdown("""
 </style>""", unsafe_allow_html=True)
 
 EXECUTED_SQL = []
+REQUIRED_COLUMNS = {"__time", "event_id", "event_type", "event_date", "device", "category",
+                    "user_id", "session_id", "revenue", "is_purchase", "source_batch"}
 
 
 def druid_sql(query, record=True):
@@ -61,6 +63,12 @@ def bounds():
                        f"WHERE TABLE_SCHEMA='druid' AND TABLE_NAME={q(DS)}", record=False)
     if exists.empty or int(exists["n"][0]) == 0:
         return None
+    cols = druid_sql(f"SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS "
+                     f"WHERE TABLE_SCHEMA='druid' AND TABLE_NAME={q(DS)}", record=False)
+    have = set(cols["COLUMN_NAME"]) if not cols.empty else set()
+    missing = sorted(REQUIRED_COLUMNS - have)
+    if missing:
+        return {"missing": missing, "have": sorted(have)}
     # (Druid cannot MIN/MAX a string column, so bounds come from __time)
     b = druid_sql(f"""SELECT TIME_FORMAT(MIN(__time), 'yyyy-MM-dd') AS lo,
                       TIME_FORMAT(MAX(__time), 'yyyy-MM-dd') AS hi, COUNT(*) AS n FROM "{DS}" """, record=False)
@@ -76,6 +84,20 @@ st.title("📊 ClickPulse — RetailMart shopping analytics")
 info = bounds()
 if info is None:
     st.warning(f"Druid datasource `{DS}` has no data yet. Run the pipeline for day1 first.")
+    st.stop()
+if "missing" in info:
+    st.error(f"Druid datasource `{DS}` exists but was not loaded by the ClickPulse pipeline: "
+             f"it is missing the columns {', '.join(info['missing'])}.")
+    st.markdown(
+        "Either Druid is still loading its segments (wait a minute and press Refresh), or data was "
+        "loaded into this name some other way (for example the Druid console's *Load data*).\n\n"
+        "On VM4 run `bash scripts/vm4/druid_inspect.sh` to see what is in it. If it is not ClickPulse "
+        "data and the final run has not happened yet, delete it with "
+        "`bash scripts/vm4/druid_inspect.sh --drop` and run the pipeline again.")
+    st.caption("Columns found: " + (", ".join(info["have"]) or "(none)"))
+    if st.button("↻ Refresh from Druid"):
+        st.cache_data.clear()
+        st.rerun()
     st.stop()
 
 with st.sidebar:

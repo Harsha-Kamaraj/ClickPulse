@@ -279,5 +279,6 @@ Revenue by category: Electronics 7,158.29 · Sports 835.15 · Home & Kitchen 790
 | Airflow task `produce_to_kafka` or `spark_upsert_iceberg` fails with ssh errors | Re-run `scripts/vm2/12_setup_ssh.sh`. The repo must exist at `/opt/clickpulse/ClickPulse` on VM1/VM3 |
 | `druid_ingest` fails reading HDFS | Check the task log in the Druid console (Ingestion tab). As a fallback, set `DRUID_INPUT_MODE="local"` in `config/cluster.env` on VM2; VM2 then copies the Parquet files to VM4 over SSH |
 | Druid won't start (memory) | `DRUID_MEMORY` must be at least `4250m` (default 6g). Give VM4 at least 8 GB RAM, or set 5g |
+| Dashboard shows `Column 'source_batch' not found` or "exists but was not loaded by the ClickPulse pipeline" | Something other than the pipeline put data into `clickpulse_events` (for example the Druid console's *Load data*). On VM4 run `bash scripts/vm4/druid_inspect.sh` to see it. If it isn't ClickPulse data and the final run hasn't happened yet, `bash scripts/vm4/druid_inspect.sh --drop`, then re-run the DAG. Before the pipeline's first run the dashboard should only show a yellow "no data yet" box |
 | Spark job: `Python worker failed` on Python 3.12 | Install python3.11 and set `export PYSPARK_PYTHON=python3.11` in `/opt/clickpulse/spark/conf/spark-env.sh` |
 | Logs | `/opt/clickpulse/logs/` on every VM; Airflow task logs in the UI |

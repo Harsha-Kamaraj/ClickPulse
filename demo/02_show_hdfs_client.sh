@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+# =============================================================================
+#  DEMO - RUN ON: VM1 (Harsha) and VM3 (Gagan)   [VM2 can run it too]
+#  Proves this VM talks to the SAME HDFS cluster whose NameNode+DataNode are on VM2.
+# =============================================================================
+source "$(dirname "$0")/../scripts/lib/common.sh"
+
+banner "HDFS client check on $(hostname) ($(hostname -I 2>/dev/null | tr ' ' '\n' | grep -E "^($VM1_IP|$VM2_IP|$VM3_IP|$VM4_IP)$" || echo '?'))"
+step "Configured filesystem"
+run "$HADOOP_HOME/bin/hdfs" getconf -confKey fs.defaultFS
+step "Cluster report (served by the NameNode on VM2)"
+"$HADOOP_HOME/bin/hdfs" dfsadmin -report 2>/dev/null | grep -E "Configured Capacity|DFS Used:|Live datanodes|^Name:|^Hostname:" | head -8
+step "ClickPulse directories"
+run "$HADOOP_HOME/bin/hdfs" dfs -ls "$HDFS_ROOT"
+run "$HADOOP_HOME/bin/hdfs" dfs -ls -R "$HDFS_ROOT/raw"
+step "Write + read test from this VM"
+f="$HDFS_ROOT/_control/hello_from_$(hostname).txt"
+echo "hello from $(hostname) at $(date -u +%H:%M:%S)" | "$HADOOP_HOME/bin/hdfs" dfs -put -f - "$f"
+run "$HADOOP_HOME/bin/hdfs" dfs -cat "$f"
+run "$HADOOP_HOME/bin/hdfs" dfs -ls "$HDFS_ROOT/_control"
+ok "$(hostname) is a client of ${HDFS_URI}"

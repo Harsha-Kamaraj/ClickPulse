@@ -1,0 +1,6 @@
+__pycache__/
+*.pyc
+.venv/
+tests/.cache/
+config/cluster.local.env
+.DS_Store

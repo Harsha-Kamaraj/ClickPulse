@@ -203,7 +203,7 @@ Scripts pause between sections; press ENTER to continue. Set `DEMO_NO_PAUSE=1` t
 | 9 | Abhishek | VM4 | `bash demo/13_vm4_show_druid.sh`, then refresh the dashboard | **Revenue 10,061.31, Purchases 33**. Druid mirrors the table. Event lookup `evt_f3afdd8733` gives 1 row, dated 2025-01-04 |
 | 10 | Harsha | VM1 | `bash demo/01_vm1_show_kafka.sh` | 144 + 148 messages; each batch byte-identical to its file; control markers |
 | 11 | Anjanaa | VM2 | `bash demo/20_vm2_rerun_idempotency.sh` | Reruns the **whole DAG** for Day 1 (after Day 2) and Day 2. Before/after fingerprint: Kafka offsets, HDFS raw and rejects, Iceberg tables, Druid segments are all **UNCHANGED** |
-| 12 | Gagan, then Abhishek | VM3, VM4 | `bash demo/12_vm3_show_curated.sh after-rerun`, refresh dashboard | Audit rows for the reruns: 0 inserts, 0 updates, 0 drops (116 / 125 already applied). Same snapshot. Same KPIs |
+| 12 | Gagan, then Abhishek | VM3, VM4 | **Gagan (VM3):** `bash demo/12_vm3_show_curated.sh after-rerun`. **Abhishek (VM4):** refresh the dashboard (optionally `bash demo/13_vm4_show_druid.sh`) | Gagan: audit rows for the reruns show 0 inserts, 0 updates, 0 drops (116 / 125 already applied), same snapshot. Abhishek: same KPIs, $10,061.31 and 33 |
 
 Useful extras during Q&A:
 - Gagan: `bash demo/12_vm3_show_curated.sh event evt_129bdeb398` shows the full history of one event: current row, every decision, and its rejects.

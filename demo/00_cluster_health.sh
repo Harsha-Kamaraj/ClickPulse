@@ -7,8 +7,8 @@ source "$(dirname "$0")/../scripts/lib/common.sh"
 
 banner "ClickPulse cluster health  ($(date -u '+%Y-%m-%d %H:%M:%S UTC'), from $(hostname))"
 
-check() {  # vm label host port
-  if port_open "$3" "$4"; then
+check() {  # vm label host port   (one retry, so a single dropped packet on ZeroTier doesn't show DOWN)
+  if port_open "$3" "$4" || { sleep 1; port_open "$3" "$4"; }; then
     printf "  %-5s %-42s %-22s ${C_GREEN}UP${C_RESET}\n" "$1" "$2" "$3:$4"
   else
     printf "  %-5s %-42s %-22s ${C_RED}DOWN${C_RESET}\n" "$1" "$2" "$3:$4"; DOWN=$((DOWN + 1))
@@ -18,8 +18,10 @@ DOWN=0
 step "ZeroTier reachability"
 for n in 1 2 3 4; do
   hv="VM${n}_HOST"; iv="VM${n}_IP"
-  if ping -c1 -W2 "${!hv}" >/dev/null 2>&1; then
+  if ping -c2 -W2 "${!hv}" >/dev/null 2>&1; then
     echo "  VM${n}  ${!hv} (${!iv})  ${C_GREEN}reachable${C_RESET}"
+  elif port_open "${!hv}" 22; then
+    echo "  VM${n}  ${!hv} (${!iv})  ${C_GREEN}reachable${C_RESET} (ping blocked, SSH answers)"
   else
     echo "  VM${n}  ${!hv} (${!iv})  ${C_RED}unreachable${C_RESET}"; DOWN=$((DOWN + 1))
   fi

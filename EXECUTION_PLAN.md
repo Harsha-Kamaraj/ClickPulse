@@ -10,27 +10,106 @@
 VM2 is the control room. Airflow on VM2 starts the producer on VM1 and `spark-submit` on VM3 over SSH, and it sends the Druid ingestion to VM4 over HTTP.
 
 Every script is idempotent. If one fails or the VM reboots, run it again.
-Run scripts as your normal user, not with `sudo`. The scripts call sudo themselves where needed.
+Run scripts as your normal user, not with `sudo`. The scripts call sudo themselves where needed; type your Linux password when asked.
+**Everything runs inside the Linux VM** (UTM on the Mac), never in the macOS terminal. Clone the repo, run the scripts and install ZeroTier all inside Ubuntu.
 
 ---
 
+## Quick checklist per person
+
+Tick these off in order. The phases below explain each step.
+
+**Harsha (VM1)**
+1. Phase 0: ZeroTier in the Linux VM, clone, `bash scripts/all/00_bootstrap_vm.sh`
+2. `bash scripts/vm1/10_install_kafka.sh`
+3. `bash scripts/vm1/11_start_kafka.sh` (can start right away; Kafka doesn't need the other VMs)
+4. Type your VM password once when Anjanaa runs `12_setup_ssh.sh`
+5. Demo: `demo/01_vm1_show_kafka.sh` (steps 1 and 10), `demo/02_show_hdfs_client.sh` (step 2)
+
+**Anjanaa (VM2)**
+1. Phase 0: ZeroTier in the Linux VM, clone, `bash scripts/all/00_bootstrap_vm.sh`
+2. `bash scripts/vm2/10_install_hdfs_airflow.sh`
+3. `bash scripts/vm2/11_start_hdfs.sh` (start this **first**; everyone else needs HDFS)
+4. `bash scripts/vm2/12_setup_ssh.sh` (once; Harsha, Gagan and Abhishek type their passwords)
+5. `bash scripts/vm2/13_start_airflow.sh`, then `bash demo/00_cluster_health.sh`
+6. Demo: steps 0, 3, 4, 7, 11, which run the pipeline through Airflow
+
+**Gagan (VM3)**
+1. Phase 0: ZeroTier in the Linux VM, clone, `bash scripts/all/00_bootstrap_vm.sh`
+2. `bash scripts/vm3/10_install_spark.sh`
+3. `bash scripts/vm3/11_start_spark.sh` (after Anjanaa's HDFS is up)
+4. Type your VM password once when Anjanaa runs `12_setup_ssh.sh`
+5. Demo: `demo/02_show_hdfs_client.sh` (step 2), `demo/12_vm3_show_curated.sh` (steps 5, 8, 12), Spark UI during step 3
+
+**Abhishek (VM4)**
+1. Phase 0: ZeroTier in the Linux VM, clone, `bash scripts/all/00_bootstrap_vm.sh`
+2. `bash scripts/vm4/10_install_druid_dashboard.sh`
+3. `bash scripts/vm4/11_start_druid.sh`, then `bash scripts/vm4/12_start_dashboard.sh`
+4. Type your VM password once when Anjanaa runs `12_setup_ssh.sh`
+5. Demo: `demo/13_vm4_show_druid.sh` and the dashboard (steps 6, 9, 12), Druid console during step 3
+
+---
+
+## Before you start: VM requirements
+
+| VM | Owner | RAM in UTM | Free disk |
+|----|-------|------------|-----------|
+| VM1 | Harsha | at least 4 GB | 10 GB |
+| VM2 | Anjanaa | at least 6 GB (HDFS + Airflow) | 15 GB |
+| VM3 | Gagan | at least 4 GB (6 GB is better) | 10 GB |
+| VM4 | Abhishek | **at least 8 GB** (Druid needs ≥ 4,250 MB for itself) | 15 GB |
+
+- Ubuntu 22.04 or 24.04. ARM64, as on Apple Silicon Macs, works.
+- UTM network mode "Shared Network" is fine; ZeroTier works through it.
+- Keep the repo on the Linux disk, not in a folder shared from the Mac.
+- If the GitHub repo is private, Harsha adds the other three as collaborators (GitHub → Settings → Collaborators) so they can clone.
+
 ## Phase 0: one-time preparation (everyone, about 15 min)
 
-1. **ZeroTier.** Every VM joins the team network: `sudo zerotier-cli join <network-id>`. Then authorise all four VMs in ZeroTier Central.
-   Each person runs `ip -4 addr | grep zt` and posts their ZeroTier IP and Linux username in the group chat.
-2. **Harsha** puts the four IPs and usernames into [config/cluster.env](config/cluster.env), then commits and pushes.
+1. **ZeroTier, inside each Linux VM.** The ZeroTier app on the Mac does not count; the VM needs its own:
+   ```bash
+   curl -s https://install.zerotier.com | sudo bash
+   sudo zerotier-cli join 3b19b3a7166902d6
+   ```
+   Harsha ticks the new member as **Authorized** in ZeroTier Central (my.zerotier.com → ClickPulse-Network → Members).
+   Then check:
+   ```bash
+   sudo zerotier-cli listnetworks   # must show: ClickPulse-Network ... OK PRIVATE ... 10.47.230.x/24
+   ip -4 addr | grep zt             # your ZeroTier IP
+   whoami                           # your Linux username
+   ```
+   Post the IP and username in the group chat. The IP must match the one in `config/cluster.env` for your VM.
+2. **Harsha** puts the four IPs and usernames into [config/cluster.env](config/cluster.env), then commits and pushes. This is already done:
+
+   | VM | IP | user |
+   |----|----|------|
+   | VM1 Harsha | 10.47.230.67 | pes1ug24cs666 |
+   | VM2 Anjanaa | 10.47.230.52 | pes1ug24cs654 |
+   | VM3 Gagan | 10.47.230.65 | gagan-raghavan |
+   | VM4 Abhishek | 10.47.230.129 | ubuntuaithal |
 3. **Everyone** clones the repo to the same path on their VM:
    ```bash
+   sudo apt-get install -y git
    sudo mkdir -p /opt/clickpulse && sudo chown $USER /opt/clickpulse
    git clone https://github.com/Harsha-Kamaraj/ClickPulse.git /opt/clickpulse/ClickPulse
    cd /opt/clickpulse/ClickPulse
    ```
-   If you cloned before Harsha pushed the IPs, run `git pull`.
 4. **Everyone** runs:
    ```bash
    bash scripts/all/00_bootstrap_vm.sh
    ```
-   This installs Java 11 and Python, writes `cp-vm1..cp-vm4` into `/etc/hosts`, creates `/opt/clickpulse`, and pings the other three VMs. All four must show *reachable* before you continue.
+   This installs Java 11 and Python, writes `cp-vm1..cp-vm4` into `/etc/hosts`, creates `/opt/clickpulse`, and pings the other three VMs.
+   It ends with one line per VM. All four must show **reachable** before Phase 2. Phase 1 installs can start anyway.
+   A VM that shows `NOT reachable` is usually off, missing ZeroTier inside Linux, or not authorised in ZeroTier Central.
+5. **Everyone**, firewall check: `sudo ufw status` should say `inactive`. If it is active, run `sudo ufw disable`. The VMs talk on many ports: 9092-9094, 9000, 9866, 9870, 7077, 8080, 8081-8091, 8888, 8501.
+
+### When `cluster.env` or the code changes
+Whoever changes it commits and pushes. Then **everyone** runs:
+```bash
+cd /opt/clickpulse/ClickPulse && git pull
+bash scripts/all/00_bootstrap_vm.sh      # only needed if an IP or username changed (rewrites /etc/hosts)
+```
+`cluster.env` must be identical on all four VMs.
 
 ## Phase 1: install (each on your own VM, all in parallel, 10–20 min)
 
@@ -54,7 +133,42 @@ Run scripts as your normal user, not with `sudo`. The scripts call sudo themselv
 | 7 | Anjanaa (VM2)  | `bash scripts/vm2/13_start_airflow.sh`    | DAG `clickpulse_pipeline` listed, UI on `:8080` |
 | 8 | Anjanaa (VM2)  | `bash demo/00_cluster_health.sh`          | every line **UP** |
 
-After any VM reboot, run that VM's start scripts again. Data on disk is kept.
+Optional check before the demo: Harsha and Gagan run `bash demo/02_show_hdfs_client.sh` to confirm VM1 and VM3 can read and write HDFS on VM2.
+
+### Every later day: startup and shutdown
+
+Installs are one-time. On demo day, or after the Macs or VMs were restarted, only the **start** scripts are needed, in this order:
+
+1. All four: start the Linux VM in UTM and check `sudo zerotier-cli listnetworks` shows `OK`.
+2. Anjanaa: `bash scripts/vm2/11_start_hdfs.sh`
+3. Harsha: `bash scripts/vm1/11_start_kafka.sh`
+4. Gagan: `bash scripts/vm3/11_start_spark.sh`
+5. Abhishek: `bash scripts/vm4/11_start_druid.sh` and `bash scripts/vm4/12_start_dashboard.sh`
+6. Anjanaa: `bash scripts/vm2/13_start_airflow.sh`, then `bash demo/00_cluster_health.sh` (everything UP)
+
+All data survives a restart: Kafka messages, HDFS files, Iceberg tables and Druid segments.
+
+To shut down cleanly at the end of a day, run the stop script on your own VM:
+
+| Who | Command |
+|-----|---------|
+| Harsha | `bash scripts/vm1/stop_kafka.sh` |
+| Anjanaa | `bash scripts/vm2/stop_all_vm2.sh` |
+| Gagan | `bash scripts/vm3/stop_spark.sh` |
+| Abhishek | `bash scripts/vm4/stop_vm4.sh` |
+
+### Opening the web UIs
+
+From a browser **inside any of the Linux VMs**, use the names: `http://cp-vm2:8080`, `http://cp-vm4:8501`, and so on.
+From the **Mac** itself, the Mac must also be joined to the ZeroTier network, using the ZeroTier app with the same network ID. Then use the IPs:
+
+| UI | URL | Login |
+|----|-----|-------|
+| Airflow | http://10.47.230.52:8080 | admin / admin |
+| HDFS NameNode | http://10.47.230.52:9870 | |
+| Spark master | http://10.47.230.65:8080 | |
+| Druid console | http://10.47.230.129:8888 | |
+| Dashboard | http://10.47.230.129:8501 | |
 
 ## Phase 3: rehearse, then do the final run
 
@@ -156,7 +270,9 @@ Revenue by category: Electronics 7,158.29 · Sports 835.15 · Home & Kitchen 790
 | Symptom | Fix |
 |---|---|
 | A script says `meant for VM<n>` | You are on the wrong VM, or the IP in `config/cluster.env` is wrong. `CP_FORCE=1` overrides the check |
-| VMs can't ping each other | ZeroTier: is the member authorised in ZeroTier Central? Check `sudo zerotier-cli listnetworks` |
+| VMs can't ping each other | ZeroTier must run inside the Linux VM, not only on the Mac. `sudo zerotier-cli listnetworks` must show `OK`; `ACCESS_DENIED` or `REQUESTING_CONFIGURATION` means the member is not yet authorised in ZeroTier Central |
+| ZeroTier gave a different IP than `cluster.env` | Update `cluster.env`, commit and push; everyone runs `git pull` and re-runs `scripts/all/00_bootstrap_vm.sh` |
+| `git clone` asks for a password or says not found | The repo is private: Harsha adds you as a collaborator, or use a GitHub personal access token as the password |
 | Download is very slow or fails | Copy the tarball into `/opt/clickpulse/downloads/` (any VM can `scp` it to another) and re-run |
 | HDFS `Connection refused` from VM1/VM3 | Run `scripts/vm2/11_start_hdfs.sh` on VM2. Check `getent hosts cp-vm2` shows the ZeroTier IP |
 | HDFS write from VM1/VM3 hangs at the DataNode | The DataNode port 9866 must be reachable. Check `nc -zv cp-vm2 9866` and that the firewall is off (`sudo ufw disable`) |

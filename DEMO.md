@@ -163,6 +163,7 @@ Event ids worth showing on request:
 | A line is DOWN in the health check | that person reruns their start script from Part B. Firewall: `sudo ufw status`; allow `10.47.230.0/24` or `sudo ufw disable` |
 | A VM can't reach the others | `sudo zerotier-cli listnetworks` must show `OK`; restart with `sudo systemctl restart zerotier-one` |
 | An Airflow task is red during the rerun | open the task log in the Airflow UI; Airflow retries twice by itself. Re-running the same `day2` command is safe |
+| Airflow `spark_upsert_iceberg` runs for more than 5 minutes | another Spark application holds the worker's cores, or the worker died. Gagan opens the Spark UI (`http://10.47.230.65:8080`): kill any other RUNNING application (Ctrl+C in its terminal or **(kill)** in the UI); if Alive Workers is 0, run `bash scripts/vm3/11_start_spark.sh`. The waiting job then continues by itself. Don't run Gagan's report scripts while the pipeline runs |
 | Dashboard empty right after start | Druid is still loading segments; wait a minute and press **Refresh from Druid** |
 
 Background, viva answers and the full troubleshooting table: [EXECUTION_PLAN.md](EXECUTION_PLAN.md).

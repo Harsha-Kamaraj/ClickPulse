@@ -18,5 +18,6 @@ fi
 "$SPARK_HOME/bin/spark-submit" \
   --master "$SPARK_MASTER_URL" --deploy-mode client --name clickpulse-report \
   --conf spark.ui.showConsoleProgress=false \
+  --conf spark.cores.max=1 --conf spark.executor.memory=512m \
   "$CP_ROOT/pipeline/spark/report.py" \
   --warehouse "$ICEBERG_WAREHOUSE" "${ARGS[@]}" 2> >(grep -v -E '^\S+ \S+ (INFO|WARN) ' >&2)

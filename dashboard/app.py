@@ -24,7 +24,8 @@ st.set_page_config(page_title="ClickPulse", page_icon="📊", layout="wide")
 st.markdown("""
 <style>
   div[data-testid="stMetric"] {background: rgba(127,127,127,0.08); border-radius: 10px; padding: 14px 18px;}
-  div[data-testid="stMetricValue"] {font-size: 1.9rem;}
+  div[data-testid="stMetricValue"] {font-size: clamp(1.15rem, 1.7vw, 1.9rem);}
+  div[data-testid="stMetricValue"] * {overflow: visible !important; text-overflow: clip !important;}
   .block-container {padding-top: 1.6rem;}
 </style>""", unsafe_allow_html=True)
 
@@ -138,9 +139,9 @@ sessions = druid_sql(f"""SELECT COUNT(DISTINCT session_id) AS n FROM "{DS}" WHER
 revenue = float(k["revenue"] or 0)
 purchases = int(k["purchases"] or 0)
 c1, c2, c3, c4, c5 = st.columns(5)
-c1.metric("Revenue", f"$ {revenue:,.2f}")
+c1.metric("Revenue", f"${revenue:,.2f}")
 c2.metric("Purchases", f"{purchases:,}")
-c3.metric("Avg order value", f"$ {revenue / purchases:,.2f}" if purchases else "—")
+c3.metric("Avg order value", f"${revenue / purchases:,.2f}" if purchases else "—")
 c4.metric("Events", f"{int(k['events'] or 0):,}")
 c5.metric("Users / sessions", f"{int(users or 0)} / {int(sessions or 0)}")
 
